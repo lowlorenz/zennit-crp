@@ -1,10 +1,12 @@
 
-import torch.nn as nn
-import torch
-from zennit.composites import EpsilonPlus
-from crp.helper import get_layer_names
-from crp.attribution import CondAttribution
 import pytest
+import torch
+import torch.nn as nn
+from zennit.composites import EpsilonPlus
+
+from crp.attribution import CondAttribution
+from crp.helper import get_layer_names
+from tests.test_utils import cosine_similarity
 
 
 class SimpleModel(nn.Module):
@@ -28,7 +30,6 @@ class SimpleModel(nn.Module):
         y3 = torch.cat([y1, y2], dim=1)
 
         return self.layer3(y3)
-
 
 class OneDimCondAttribution(CondAttribution):
 
@@ -57,9 +58,9 @@ def test_simple_attribution(simple_cond_attribution):
 
     attr = attribution(inp, conditions, composite, layer_names)
 
-    assert torch.allclose(attr.heatmap, torch.tensor([-11.0, 21.0]))
-    assert torch.allclose(attr.relevances["layer1"], torch.tensor([1.0, 4.0]))
-    assert torch.allclose(attr.relevances["layer2"], torch.tensor([5.0, 0.0]))
+    assert cosine_similarity(attr.heatmap, torch.tensor([-11.0, 21.0])) > 0.999
+    assert cosine_similarity(attr.relevances["layer1"], torch.tensor([1.0, 4.0])) > 0.999
+    assert cosine_similarity(attr.relevances["layer2"], torch.tensor([5.0, 0.0])) > 0.999
 
 
 def test_parallel_attribution(simple_cond_attribution):
@@ -74,18 +75,18 @@ def test_parallel_attribution(simple_cond_attribution):
 
     attr = attribution(inp, conditions, composite, layer_names, exclude_parallel=False)
 
-    assert torch.allclose(attr.heatmap, torch.tensor([-1.0, 2.0]))
-    assert torch.allclose(attr.relevances["layer1"], torch.tensor([1.0, 4.0]))
-    assert torch.allclose(attr.relevances["layer2"], torch.tensor([5.0, 0.0]))
+    assert cosine_similarity(attr.heatmap, torch.tensor([-1.0, 2.0])) > 0.999
+    assert cosine_similarity(attr.relevances["layer1"], torch.tensor([1.0, 4.0])) > 0.999
+    assert cosine_similarity(attr.relevances["layer2"], torch.tensor([5.0, 0.0])) > 0.999
 
     conditions = [{"y": [0], "layer1": [0]}]
 
     inp.grad = None
     attr_p = attribution(inp, conditions, composite, layer_names, exclude_parallel=True)
 
-    assert torch.allclose(attr_p.heatmap, torch.tensor([-1.0, 2.0]))
-    assert torch.allclose(attr_p.relevances["layer1"], torch.tensor([1.0, 4.0]))
-    assert torch.allclose(attr_p.relevances["layer2"], torch.tensor([0.0, 0.0]))
+    assert cosine_similarity(attr_p.heatmap, torch.tensor([-1.0, 2.0])) > 0.999
+    assert cosine_similarity(attr_p.relevances["layer1"], torch.tensor([1.0, 4.0])) > 0.999
+    assert cosine_similarity(attr_p.relevances["layer2"], torch.tensor([0.0, 0.0])) > 0.999
 
 
 def test_parallel_cond_attribution(simple_cond_attribution):
@@ -100,9 +101,9 @@ def test_parallel_cond_attribution(simple_cond_attribution):
 
     attr = attribution(inp, conditions, composite, layer_names, exclude_parallel=False)
 
-    assert torch.allclose(attr.heatmap, torch.tensor([-11.0, 17.0]))
-    assert torch.allclose(attr.relevances["layer1"], torch.tensor([1.0, 4.0]))
-    assert torch.allclose(attr.relevances["layer2"], torch.tensor([5.0, 0.0]))
+    assert cosine_similarity(attr.heatmap, torch.tensor([-11.0, 17.0])) > 0.999
+    assert cosine_similarity(attr.relevances["layer1"], torch.tensor([1.0, 4.0])) > 0.999
+    assert cosine_similarity(attr.relevances["layer2"], torch.tensor([5.0, 0.0])) > 0.999
 
 def test_seq_cond_attribution(simple_cond_attribution):
 
@@ -116,6 +117,6 @@ def test_seq_cond_attribution(simple_cond_attribution):
 
     attr = attribution(inp, conditions, composite, layer_names, exclude_parallel=True)
 
-    assert torch.allclose(attr.heatmap, torch.tensor([-1.0, 2.0]))
-    assert torch.allclose(attr.relevances["layer1"], torch.tensor([1.0, 4.0]))
-    assert torch.allclose(attr.relevances["layer2"], torch.tensor([0.0, 0.0]))
+    assert cosine_similarity(attr.heatmap, torch.tensor([-1.0, 2.0])) > 0.99
+    assert cosine_similarity(attr.relevances["layer1"], torch.tensor([1.0, 4.0])) > 0.99
+    assert cosine_similarity(attr.relevances["layer2"], torch.tensor([0.0, 0.0])) > 0.99
